@@ -3,6 +3,7 @@ FROM node:20.12 as frontend-build
 WORKDIR /app
 COPY ./bas-pruefungsgenerator-web/package*.json ./
 COPY ./bas-pruefungsgenerator-web/.npmrc ./
+ARG GITHUB_PACKAGE_REGISTRY_TOKEN
 RUN npm install --silent
 COPY ./bas-pruefungsgenerator-web/ .
 RUN npm run build
