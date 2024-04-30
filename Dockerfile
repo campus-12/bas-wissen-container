@@ -20,7 +20,6 @@ RUN npm run build
 # Stage 3: Production environment
 FROM node:20.12-alpine
 ARG BACKEND_PORT=3000
-ARG MODULE_PATH=modules
 WORKDIR /app
 
 # Copy built backend
@@ -30,12 +29,15 @@ COPY --from=backend-build /app/node_modules ./backend/node_modules
 # Copy built frontend
 COPY --from=frontend-build /app/dist ./frontend/dist
 
+# Copy initial data like templates
+COPY ./data /data
+
 # Setup environment variables, ports, and start command
 ENV NODE_ENV=production
 ENV BACKEND_PORT=$BACKEND_PORT
-ENV DATA_ROOT_PATH=/app/backend/data
-ENV MODULE_PATH=$MODULE_PATH
+ENV DATA_ROOT_PATH=/data
 ENV FRONTEND_ROOT_PATH=/app/frontend/dist
+
 
 VOLUME $DATA_ROOT_PATH
 EXPOSE $BACKEND_PORT
