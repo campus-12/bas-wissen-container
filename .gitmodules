@@ -1,6 +1,6 @@
-[submodule "bas-pruefungsgenerator-web"]
-	path = bas-pruefungsgenerator-web
-	url = git@github.com:campus-12/bas-pruefungsgenerator-web.git
-[submodule "bas-pruefungsgenerator-backend"]
-	path = bas-pruefungsgenerator-backend
+[submodule "app/bas-pruefungsgenerator-backend"]
+	path = app/bas-pruefungsgenerator-backend
 	url = git@github.com:campus-12/bas-pruefungsgenerator-backend.git
+[submodule "app/bas-pruefungsgenerator-web"]
+	path = app/bas-pruefungsgenerator-web
+	url = git@github.com:campus-12/bas-pruefungsgenerator-web.git
