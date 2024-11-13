@@ -1,19 +1,21 @@
 # Stage 1: Build the frontend
-FROM node:20.12 as frontend-build
+FROM node:22.11.0-alpine3.20 as frontend-build
+RUN npm install -g pnpm
 WORKDIR /app
 COPY ./app/bas-pruefungsgenerator-web/package*.json ./
 COPY ./app/bas-pruefungsgenerator-web/.npmrc ./
-RUN --mount=type=secret,id=GITHUB_PACKAGE_REGISTRY_TOKEN export GITHUB_PACKAGE_REGISTRY_TOKEN=$(cat /run/secrets/GITHUB_PACKAGE_REGISTRY_TOKEN) && npm install --silent
+RUN --mount=type=secret,id=GITHUB_PACKAGE_REGISTRY_TOKEN export GITHUB_PACKAGE_REGISTRY_TOKEN=$(cat /run/secrets/GITHUB_PACKAGE_REGISTRY_TOKEN) && pnpm install
 COPY ./app/bas-pruefungsgenerator-web/ ./
 COPY ./environment/.env.web ./.env
 RUN npm run build
 
 # Stage 2: Build the backend
-FROM node:20.12-alpine as backend-build
+FROM node:22.11.0-alpine3.20 as backend-build
+RUN npm install -g pnpm
 WORKDIR /app
 COPY ./app/bas-pruefungsgenerator-backend/package*.json ./
 COPY ./app/bas-pruefungsgenerator-backend/.npmrc ./
-RUN npm install --silent
+RUN pnpm install
 COPY ./app/bas-pruefungsgenerator-backend/ .
 RUN npm run build
 
@@ -25,7 +27,7 @@ RUN npm run build
 # |-- /app
 #     |-- /backend
 #     |-- /web
-FROM node:20.12-alpine
+FROM node:22.11.0-alpine3.20
 ARG BACKEND_PORT=3000
 ENV BACKEND_PORT=$BACKEND_PORT
 ARG DATA_PATH=data
