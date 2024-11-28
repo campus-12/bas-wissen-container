@@ -7,7 +7,7 @@ COPY ./app/bas-pruefungsgenerator-web/.npmrc ./
 RUN --mount=type=secret,id=GITHUB_PACKAGE_REGISTRY_TOKEN export GITHUB_PACKAGE_REGISTRY_TOKEN=$(cat /run/secrets/GITHUB_PACKAGE_REGISTRY_TOKEN) && pnpm install
 COPY ./app/bas-pruefungsgenerator-web/ ./
 COPY ./environment/.env.web ./.env
-RUN npm run build
+RUN pnpm run build
 
 # Stage 2: Build the backend
 FROM node:22.11.0-alpine3.20 as backend-build
@@ -17,7 +17,7 @@ COPY ./app/bas-pruefungsgenerator-backend/package*.json ./
 COPY ./app/bas-pruefungsgenerator-backend/.npmrc ./
 RUN pnpm install
 COPY ./app/bas-pruefungsgenerator-backend/ .
-RUN npm run build
+RUN pnpm run build
 
 # Stage 3: Production environment
 # Intended directory structure:
