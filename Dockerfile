@@ -32,7 +32,10 @@ ARG BACKEND_PORT=3000
 ENV BACKEND_PORT=$BACKEND_PORT
 ARG DATA_PATH=data
 
-# Copy initial data like templates and configure data path
+# Install Caddy
+RUN apk add --no-cache caddy
+
+# Copy data and app
 WORKDIR /
 COPY ./data $DATA_PATH
 VOLUME $DATA_PATH
@@ -45,10 +48,35 @@ COPY --from=backend-build /app/dist/src ./backend
 COPY --from=backend-build /app/node_modules ./backend/node_modules
 COPY ./environment/.env.backend ./backend/.env
 COPY --from=frontend-build /app/dist ./web
-ENV FRONTEND_ROOT_PATH=/app/web
 
-# Start the backend
+# Configure Caddy
+COPY <<EOF /etc/caddy/Caddyfile
+:80 {
+    # Frontend
+    root * /app/web
+    file_server
+    
+    # Backend API
+    reverse_proxy /api/* localhost:3000
+    
+    # SPA fallback
+    try_files {path} /index.html
+}
+EOF
+
+# Create startup script
+COPY <<'EOF' /start.sh
+#!/bin/sh
+# Start backend in background
+cd /app/backend
+NODE_ENV=production node main.js &
+
+# Start Caddy in foreground
+caddy run --config /etc/caddy/Caddyfile
+EOF
+
+RUN chmod +x /start.sh
+
 ENV NODE_ENV=production
-EXPOSE $BACKEND_PORT
-WORKDIR /app/backend
-CMD ["node", "main.js"]
+EXPOSE 80
+CMD ["/start.sh"]
