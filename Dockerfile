@@ -52,12 +52,12 @@ COPY --from=frontend-build /app/dist ./web
 # Configure Caddy
 COPY <<EOF /etc/caddy/Caddyfile
 :80 {
+    # Backend API
+    reverse_proxy /api/* localhost:3000
+
     # Frontend
     root * /app/web
     file_server
-    
-    # Backend API
-    reverse_proxy /api/* localhost:3000
     
     # SPA fallback
     try_files {path} /index.html
