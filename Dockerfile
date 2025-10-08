@@ -39,7 +39,6 @@ RUN apk add --no-cache caddy
 WORKDIR /
 COPY ./data $DATA_PATH
 VOLUME $DATA_PATH
-#  Root path for data from the perspective of the backend
 ENV DATA_PATH=../../$DATA_PATH
 
 # Copy built results
@@ -52,27 +51,48 @@ COPY --from=frontend-build /app/dist ./web
 # Configure Caddy
 COPY <<EOF /etc/caddy/Caddyfile
 :80 {
-    # Backend API
-    reverse_proxy /api/* localhost:3000
-
-    # Frontend
-    root * /app/web
-    file_server
+    # Backend API - muss VOR file_server kommen
+    handle /api/* {
+        reverse_proxy localhost:3000
+    }
     
-    # SPA fallback
-    try_files {path} /index.html
+    # Frontend mit SPA fallback
+    handle {
+        root * /app/web
+        try_files {path} /index.html
+        file_server
+    }
 }
 EOF
 
 # Create startup script
 COPY <<'EOF' /start.sh
 #!/bin/sh
+set -e
+
+echo "Starting BAS Prüfungsgenerator..."
+
 # Start backend in background
+echo "Starting backend on port 3000..."
 cd /app/backend
 NODE_ENV=production node main.js &
+BACKEND_PID=$!
+
+# Wait for backend to be ready
+echo "Waiting for backend to start..."
+sleep 3
+
+# Check if backend is running
+if ! kill -0 $BACKEND_PID 2>/dev/null; then
+    echo "ERROR: Backend failed to start!"
+    exit 1
+fi
+
+echo "Backend started successfully (PID: $BACKEND_PID)"
 
 # Start Caddy in foreground
-caddy run --config /etc/caddy/Caddyfile
+echo "Starting Caddy reverse proxy..."
+exec caddy run --config /etc/caddy/Caddyfile
 EOF
 
 RUN chmod +x /start.sh
