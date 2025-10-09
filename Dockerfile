@@ -1,21 +1,23 @@
 # Stage 1: Build the frontend
-FROM node:22.20.0-alpine3.22 as frontend-build
+FROM node:22.20.0-alpine3.22 AS frontend-build
 #RUN npm install -g pnpm
 RUN corepack enable && corepack prepare pnpm@^9.x --activate
 WORKDIR /app
 COPY ./app/bas-pruefungsgenerator-web/package*.json ./
 COPY ./app/bas-pruefungsgenerator-web/.npmrc ./
+COPY ./app/bas-pruefungsgenerator-web/pnpm-lock.yaml ./
 RUN --mount=type=secret,id=GITHUB_PACKAGE_REGISTRY_TOKEN export GITHUB_PACKAGE_REGISTRY_TOKEN=$(cat /run/secrets/GITHUB_PACKAGE_REGISTRY_TOKEN) && pnpm i --frozen-lockfile
 COPY ./app/bas-pruefungsgenerator-web/ ./
 COPY ./environment/.env.web ./.env
 RUN pnpm build
 
 # Stage 2: Build the backend
-FROM node:22.20.0-alpine3.22 as backend-build
+FROM node:22.20.0-alpine3.22 AS backend-build
 RUN corepack enable && corepack prepare pnpm@^9.x --activate
 WORKDIR /app
 COPY ./app/bas-pruefungsgenerator-backend/package*.json ./
 COPY ./app/bas-pruefungsgenerator-backend/.npmrc ./
+COPY ./app/bas-pruefungsgenerator-backend/pnpm-lock.yaml ./
 RUN pnpm i --frozen-lockfile
 COPY ./app/bas-pruefungsgenerator-backend/ .
 RUN pnpm build
