@@ -58,8 +58,6 @@ COPY Caddyfile /etc/caddy/Caddyfile
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-RUN corepack enable && corepack prepare pnpm@^9.x --activate
-
 ENV NODE_ENV=production
 EXPOSE 80
 CMD ["/start.sh"]
