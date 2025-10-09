@@ -48,6 +48,7 @@ ENV DATA_PATH=../../$DATA_PATH
 WORKDIR /app
 COPY --from=backend-build /app/dist/src ./backend
 COPY --from=backend-build /app/node_modules ./backend/node_modules
+COPY --from=backend-build /app/package.json ./backend/package.json
 COPY ./environment/.env.backend ./backend/.env
 COPY --from=frontend-build /app/dist ./web
 
