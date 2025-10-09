@@ -1,6 +1,7 @@
 # Stage 1: Build the frontend
-FROM node:22.11.0-alpine3.20 as frontend-build
-RUN npm install -g pnpm
+FROM node:22.20.0-alpine3.22 as frontend-build
+#RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@^9.x --activate
 WORKDIR /app
 COPY ./app/bas-pruefungsgenerator-web/package*.json ./
 COPY ./app/bas-pruefungsgenerator-web/.npmrc ./
@@ -10,8 +11,8 @@ COPY ./environment/.env.web ./.env
 RUN pnpm build
 
 # Stage 2: Build the backend
-FROM node:22.11.0-alpine3.20 as backend-build
-RUN npm install -g pnpm
+FROM node:22.20.0-alpine3.22 as backend-build
+RUN corepack enable && corepack prepare pnpm@^9.x --activate
 WORKDIR /app
 COPY ./app/bas-pruefungsgenerator-backend/package*.json ./
 COPY ./app/bas-pruefungsgenerator-backend/.npmrc ./
@@ -27,7 +28,7 @@ RUN pnpm build
 # |-- /app
 #     |-- /backend
 #     |-- /web
-FROM node:22.11.0-alpine3.20
+FROM node:22.20.0-alpine3.22
 ARG BACKEND_PORT=3000
 ENV BACKEND_PORT=$BACKEND_PORT
 ARG DATA_PATH=data
