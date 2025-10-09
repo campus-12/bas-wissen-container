@@ -6,7 +6,8 @@ echo "Starting BAS Prüfungsgenerator..."
 # Start backend in background
 echo "Starting backend on port 3000..."
 cd /app/backend
-NODE_ENV=production node main.js &
+#NODE_ENV=production node main.js &
+NODE_ENV=production pnpm start &
 BACKEND_PID=$!
 
 # Wait for backend to be ready
