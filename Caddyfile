@@ -1,0 +1,13 @@
+:80 {
+    # Backend API - muss VOR file_server kommen
+    handle /api/* {
+        reverse_proxy localhost:3000
+    }
+
+    # Frontend mit SPA fallback
+    handle {
+        root * /app/web
+        try_files {path} /index.html
+        file_server
+    }
+}
