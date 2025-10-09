@@ -4,10 +4,10 @@ RUN npm install -g pnpm
 WORKDIR /app
 COPY ./app/bas-pruefungsgenerator-web/package*.json ./
 COPY ./app/bas-pruefungsgenerator-web/.npmrc ./
-RUN --mount=type=secret,id=GITHUB_PACKAGE_REGISTRY_TOKEN export GITHUB_PACKAGE_REGISTRY_TOKEN=$(cat /run/secrets/GITHUB_PACKAGE_REGISTRY_TOKEN) && pnpm install
+RUN --mount=type=secret,id=GITHUB_PACKAGE_REGISTRY_TOKEN export GITHUB_PACKAGE_REGISTRY_TOKEN=$(cat /run/secrets/GITHUB_PACKAGE_REGISTRY_TOKEN) && pnpm i --frozen-lockfile
 COPY ./app/bas-pruefungsgenerator-web/ ./
 COPY ./environment/.env.web ./.env
-RUN pnpm run build
+RUN pnpm build
 
 # Stage 2: Build the backend
 FROM node:22.11.0-alpine3.20 as backend-build
@@ -15,9 +15,9 @@ RUN npm install -g pnpm
 WORKDIR /app
 COPY ./app/bas-pruefungsgenerator-backend/package*.json ./
 COPY ./app/bas-pruefungsgenerator-backend/.npmrc ./
-RUN pnpm install
+RUN pnpm i --frozen-lockfile
 COPY ./app/bas-pruefungsgenerator-backend/ .
-RUN pnpm run build
+RUN pnpm build
 
 # Stage 3: Production environment
 # Intended directory structure:
@@ -51,7 +51,7 @@ COPY --from=frontend-build /app/dist ./web
 # Configure Caddy
 COPY <<EOF /etc/caddy/Caddyfile
 :80 {
-    # Backend API - muss VOR file_server kommen
+    # Backend API
     handle /api/* {
         reverse_proxy localhost:3000
     }
