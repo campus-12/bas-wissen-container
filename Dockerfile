@@ -35,8 +35,8 @@ ARG BACKEND_PORT=3000
 ENV BACKEND_PORT=$BACKEND_PORT
 ARG DATA_PATH=data
 
-# Install Caddy
-RUN apk add --no-cache caddy
+# Install Caddy and wget for health checks
+RUN apk add --no-cache caddy wget
 
 # Copy data and app
 WORKDIR /
