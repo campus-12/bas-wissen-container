@@ -1,5 +1,4 @@
 :80 {
-    # Backend API - muss VOR file_server kommen
     handle /api/* {
         reverse_proxy localhost:3000
     }
