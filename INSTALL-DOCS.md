@@ -451,7 +451,7 @@ chmod 600 /opt/bas-pruefungsgenerator/.env
 ### 1. GitHub Container Registry Login
 
 ```bash
-# GitHub Token vom Kunden erhalten
+# GitHub Token für campus-12 image repo
 export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
 
 # Login durchführen (username für ghcr egal für docker cli aber benötigt)
@@ -1133,7 +1133,7 @@ Nach der Installation folgende Punkte prüfen:
 - [ ] **Firewall (ufw)** ist aktiv mit nur Port 22, 80, 443 offen
 - [ ] **SSH** nutzt Key-basierte Authentifizierung (Passwort deaktiviert)
 - [ ] **PostgreSQL** ist nur über localhost erreichbar (127.0.0.1:5432)
-- [ ] **Starke Passwörter** (min. 32 Zeichen) für PostgreSQL und Swagger
+- [ ] **Starke Passwörter** (min. 32 Zeichen) für PostgreSQL und ggf. Swagger
 - [ ] **JWT Secret** hat mindestens 64 Zeichen
 - [ ] **SSL-Zertifikate** sind mit chmod 600 geschützt
 - [ ] **.env-Datei** ist mit chmod 600 geschützt
@@ -1142,9 +1142,9 @@ Nach der Installation folgende Punkte prüfen:
 - [ ] **Automatische Backups** sind konfiguriert und getestet
 - [ ] **Log-Rotation** ist aktiv
 - [ ] **Docker-Container** haben restart-Policy "unless-stopped"
-- [ ] **LDAP-Credentials** sind sicher gespeichert
 - [ ] **Security Headers** sind in Caddyfile konfiguriert
 - [ ] **Monitoring** ist eingerichtet (Healthchecks, Logs)
+- [ ] **Systemd Service** ist eingerichtet; Prüfungsgenerator startet nach reboot automatisch
 
 ---
 ## Anhang
