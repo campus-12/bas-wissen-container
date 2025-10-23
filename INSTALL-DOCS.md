@@ -1147,23 +1147,6 @@ Nach der Installation folgende Punkte prüfen:
 - [ ] **Systemd Service** ist eingerichtet; Prüfungsgenerator startet nach reboot automatisch
 
 ---
-## Anhang
-
-### Geschätzte Installationszeit
-
-- **Server-Setup**: 30-60 Minuten
-- **SSL & Konfiguration**: 30 Minuten
-- **Deployment & Tests**: 30-60 Minuten
-- **Gesamtdauer**: **2-4 Stunden** (inkl. Testing und Dokumentation)
-
-### Weitere Ressourcen
-
-- **Docker Dokumentation**: https://docs.docker.com
-- **PostgreSQL Dokumentation**: https://www.postgresql.org/docs
-- **Caddy Dokumentation**: https://caddyserver.com/docs
-- **Ubuntu Server Guide**: https://ubuntu.com/server/docs
-
----
 
 **Letzte Aktualisierung**: Oktober 2025
 **Version**: 1.0
