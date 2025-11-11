@@ -520,88 +520,6 @@ curl -k https://ihre-domain.de/api/core/version
 
 - [x] Tested
 
-### 6. Systemd Service einrichten (Autostart)
-
-Um sicherzustellen, dass der Docker Compose Stack nach einem Server-Neustart automatisch startet:
-
-```bash
-# Systemd Service-Datei erstellen
-sudo nano /etc/systemd/system/bas-pruefungsgenerator.service
-```
-
-**Inhalt der Service-Datei:**
-
-```ini
-[Unit]
-Description=BAS Prüfungsgenerator Docker Compose Stack
-Requires=docker.service
-After=docker.service network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-WorkingDirectory=/opt/bas-pruefungsgenerator
-EnvironmentFile=/opt/bas-pruefungsgenerator/.env
-ExecStart=/usr/bin/docker compose -f docker-compose.yml --env-file .env up -d
-ExecStop=/usr/bin/docker compose -f docker-compose.yml down
-TimeoutStartSec=300
-Restart=on-failure
-RestartSec=10s
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Service aktivieren und starten:**
-
-```bash
-# Systemd-Konfiguration neu laden
-sudo systemctl daemon-reload
-
-# Service aktivieren (Autostart bei Neustart)
-sudo systemctl enable bas-pruefungsgenerator.service
-
-# Service starten
-sudo systemctl start bas-pruefungsgenerator.service
-
-# Status prüfen
-sudo systemctl status bas-pruefungsgenerator.service
-```
-
-**Service-Management-Befehle:**
-
-```bash
-# Service stoppen
-sudo systemctl stop bas-pruefungsgenerator.service
-
-# Service neu starten
-sudo systemctl restart bas-pruefungsgenerator.service
-
-# Logs anzeigen
-sudo journalctl -u bas-pruefungsgenerator.service -f
-
-# Autostart deaktivieren
-sudo systemctl disable bas-pruefungsgenerator.service
-```
-
-**Neustart testen:**
-
-```bash
-# Server neu starten
-sudo reboot
-
-# Nach Neustart: Service-Status prüfen
-sudo systemctl status bas-pruefungsgenerator.service
-
-# Container-Status prüfen
-docker compose -f /opt/bas-pruefungsgenerator/docker-compose.yml ps
-```
-
-- [x] Tested
-
----
-
 ## Backup-Strategie
 
 ### 1. Automatisches Backup-Script erstellen
@@ -679,6 +597,8 @@ chmod +x /opt/bas-pruefungsgenerator/backup.sh
 
 ### 2. Cron-Job für automatische Backups
 
+⚠️ Nur anlegen, wenn kein täglicher maintenance.sh-Job (siehe weiter unten) angelegt wird.
+
 ```bash
 # Crontab bearbeiten
 crontab -e
@@ -703,11 +623,6 @@ docker compose -f docker-compose.yml exec -T db \
   pg_restore -U bas_user -d bas_pruefungsgenerator --clean --if-exists \
   < /opt/bas-pruefungsgenerator/data/backups/db_backup_YYYYMMDD_HHMMSS.dump
 
-# Alternativ: Aus SQL-Format
-gunzip < /opt/bas-pruefungsgenerator/data/backups/db_backup_YYYYMMDD_HHMMSS.sql.gz | \
-  docker compose -f docker-compose.yml exec -T db \
-  psql -U bas_user -d bas_pruefungsgenerator
-
 # Container neu starten
 docker compose -f docker-compose.yml start app
 ```
@@ -719,8 +634,8 @@ docker compose -f docker-compose.yml start app
 ```bash
 docker compose -f docker-compose.yml stop app
 
-# Backup entpacken
-tar -xzf /opt/bas-pruefungsgenerator/data/backups/app_data_YYYYMMDD_HHMMSS.tar.gz \
+# Backup entpacken (sudo wegen Wiederherstellung der Timestamps)
+sudo tar -xzf /opt/bas-pruefungsgenerator/data/backups/app_data_YYYYMMDD_HHMMSS.tar.gz \
   -C /opt/bas-pruefungsgenerator/data
 
 # Container neu starten
@@ -781,10 +696,10 @@ nano /opt/bas-pruefungsgenerator/healthcheck.sh
 ```bash
 #!/bin/bash
 #
-# Healthcheck-Script für externe Monitoring-Tools
+# Healthcheck-Script
 #
 
-DOMAIN="https://ihre-domain.de"
+DOMAIN="https://localhost"
 TIMEOUT=10
 
 # Backend API prüfen
@@ -868,11 +783,7 @@ docker image prune -af --filter "until=720h"  # 30 Tage
 echo "Prüfe Docker Volumes..."
 docker volume ls -qf dangling=true | xargs -r docker volume rm
 
-# 4. Logs komprimieren
-echo "Komprimiere alte Logs..."
-find /opt/bas-pruefungsgenerator/data/logs -name "*.log" -mtime +7 -exec gzip {} \;
-
-# 5. PostgreSQL VACUUM
+# 4. PostgreSQL VACUUM
 echo "Führe PostgreSQL VACUUM durch..."
 docker compose -f /opt/bas-pruefungsgenerator/docker-compose.yml exec db \
   psql -U bas_user -d bas_pruefungsgenerator -c "VACUUM ANALYZE;"
@@ -894,34 +805,7 @@ crontab -e
 
 ## Update-Prozedur
 
-### Reguläres Update
-
-```bash
-cd /opt/bas-pruefungsgenerator
-
-# 1. Backup erstellen (wichtig!)
-./backup.sh
-
-# 2. Aktuelles Image für Rollback sichern
-docker tag ghcr.io/campus-12/bas-pruefungsgenerator-container:latest \
-           ghcr.io/campus-12/bas-pruefungsgenerator-container:backup-$(date +%Y%m%d)
-
-# 3. Neues Image pullen
-docker pull ghcr.io/campus-12/bas-pruefungsgenerator-container:latest
-
-# 4. Container mit neuem Image starten (Rolling Update)
-docker compose -f docker-compose.yml --env-file .env up -d --no-deps app
-
-# 5. Logs überwachen
-docker compose -f docker-compose.yml logs -f app
-
-# 6. Healthcheck durchführen
-./healthcheck.sh
-```
-
-- [x] Tested
-
-### Update mit Downtime (bei größeren Änderungen)
+### Update mit Downtime
 
 ```bash
 # 1. Backup erstellen
@@ -930,17 +814,21 @@ docker compose -f docker-compose.yml logs -f app
 # 2. Container stoppen
 docker compose -f docker-compose.yml down
 
-# 3. Neues Image pullen
+# 3. Aktuelles Image für Rollback sichern
+docker tag ghcr.io/campus-12/bas-pruefungsgenerator-container:latest \
+           ghcr.io/campus-12/bas-pruefungsgenerator-container:backup-$(date +%Y%m%d%M%S)
+
+# 4. Neues Image pullen
 docker pull ghcr.io/campus-12/bas-pruefungsgenerator-container:latest
 
-# 4. Container neu starten
+# 5. Container neu starten
 docker compose -f docker-compose.yml --env-file .env up -d
 
-# 5. Logs prüfen
+# 6. Logs prüfen
 docker compose -f docker-compose.yml logs -f
 
-# 6. Funktionstest durchführen
-curl -k https://ihre-domain.de/api/core/version
+# 7. Funktionstest durchführen
+./healthcheck.sh
 ```
 
 - [x] Tested
@@ -968,10 +856,12 @@ docker compose -f docker-compose.yml down
 #   image: 2b62809e356e
 nano docker-compose.yml
 
-# 4. Container mit alter Version starten
+# 4. Alte Datenbank wiederherstellen (falls nötig, siehe Backup-Sektion)
+
+# 5. Container mit alter Version starten
 docker compose -f docker-compose.yml --env-file .env up -d
 
-# 5. Alte Datenbank wiederherstellen (falls nötig, siehe Backup-Sektion)
+
 ```
 
 - [ ] Tested
@@ -1148,5 +1038,5 @@ Nach der Installation folgende Punkte prüfen:
 
 ---
 
-**Letzte Aktualisierung**: Oktober 2025
-**Version**: 1.0
+**Letzte Aktualisierung**: November 2025
+**Version**: 1.1
