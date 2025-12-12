@@ -33,7 +33,6 @@ jobs:
         with:
           app-id: ${{ vars.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          permission-contents: true
           repositories: |
             bas-wissen-container
             bas-pruefungsgenerator-backend
