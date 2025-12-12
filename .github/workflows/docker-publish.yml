@@ -35,9 +35,9 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           permission-contents: true
           repositories: |
-            - ${{ github.repository }}
-            - campus-12/bas-pruefungsgenerator-backend
-            - campus-12/bas-pruefungsgenerator-web
+            bas-wissen-container
+            bas-pruefungsgenerator-backend
+            bas-pruefungsgenerator-web
 
       # - name: Configure GitHub token for submodules
       #   run: |
