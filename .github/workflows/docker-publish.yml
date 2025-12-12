@@ -36,8 +36,8 @@ jobs:
           permission-contents: true
           repositories: |
             - ${{ github.repository }}
-            - campus-12/bas-pruefungsgenerator-backend.git
-            - campus-12/bas-pruefungsgenerator-web.git
+            - campus-12/bas-pruefungsgenerator-backend
+            - campus-12/bas-pruefungsgenerator-web
 
       # - name: Configure GitHub token for submodules
       #   run: |
