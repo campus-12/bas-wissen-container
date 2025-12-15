@@ -35,8 +35,8 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
           repositories: |
             bas-wissen-container
-            bas-pruefungsgenerator-backend
-            bas-pruefungsgenerator-web
+            BASinteractiveMoviesBackend
+            BASinteractiveMoviesFrontend
 
       # - name: Configure GitHub token for submodules
       #   run: |
