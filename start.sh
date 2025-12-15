@@ -6,7 +6,7 @@ echo "Starting BAS Prüfungsgenerator..."
 # Start backend in background
 echo "Starting backend on port 3000..."
 cd /app/backend
-node dist/src/main.js &
+node dist/main.js &
 BACKEND_PID=$!
 
 # Wait for backend to be ready
@@ -24,7 +24,7 @@ echo "Testing backend connectivity..."
 max_attempts=10
 attempt=0
 while [ $attempt -lt $max_attempts ]; do
-    if wget -q --spider http://127.0.0.1:3000/api/core/version 2>/dev/null; then
+    if wget -q --spider http://127.0.0.1:3000/ 2>/dev/null; then
         echo "Backend is responding!"
         break
     fi

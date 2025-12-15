@@ -10,14 +10,12 @@
 
 # Stage 1: Build the frontend
 FROM node:22-alpine AS frontend-build
-#RUN npm install -g pnpm
 RUN corepack enable && corepack prepare pnpm@^9.x --activate
 WORKDIR /app
-COPY ./app/bas-pruefungsgenerator-web/package*.json ./
-COPY ./app/bas-pruefungsgenerator-web/.npmrc ./
-COPY ./app/bas-pruefungsgenerator-web/pnpm-lock.yaml ./
-RUN --mount=type=secret,id=GITHUB_PACKAGE_REGISTRY_TOKEN export GITHUB_PACKAGE_REGISTRY_TOKEN=$(cat /run/secrets/GITHUB_PACKAGE_REGISTRY_TOKEN) && pnpm i --frozen-lockfile
-COPY ./app/bas-pruefungsgenerator-web/ ./
+COPY ./app/BASinteractiveMoviesFrontend/package*.json ./
+COPY ./app/BASinteractiveMoviesFrontend/pnpm-lock.yaml ./
+RUN pnpm i --frozen-lockfile
+COPY ./app/BASinteractiveMoviesFrontend/ ./
 COPY ./environment/.env.web ./.env
 RUN pnpm build
 
@@ -25,11 +23,10 @@ RUN pnpm build
 FROM node:22-alpine AS backend-build
 RUN corepack enable && corepack prepare pnpm@^9.x --activate
 WORKDIR /app
-COPY ./app/bas-pruefungsgenerator-backend/package*.json ./
-COPY ./app/bas-pruefungsgenerator-backend/.npmrc ./
-COPY ./app/bas-pruefungsgenerator-backend/pnpm-lock.yaml ./
+COPY ./app/BASinteractiveMoviesBackend/package*.json ./
+COPY ./app/BASinteractiveMoviesBackend/pnpm-lock.yaml ./
 RUN pnpm i --frozen-lockfile
-COPY ./app/bas-pruefungsgenerator-backend/ .
+COPY ./app/BASinteractiveMoviesBackend/ .
 RUN pnpm build
 
 # Stage 3: Production environment
@@ -45,16 +42,14 @@ ARG BACKEND_PORT=3000
 ENV BACKEND_PORT=$BACKEND_PORT
 ARG DATA_PATH=data
 
-# Install Caddy and wget for health checks
-RUN apk add --no-cache caddy wget
+# Install Caddy, wget for health checks, and ffmpeg for video processing
+RUN apk add --no-cache caddy wget ffmpeg
 
 # Copy built results
 WORKDIR /app
 COPY --from=backend-build /app/dist ./backend/dist
 COPY --from=backend-build /app/node_modules ./backend/node_modules
 COPY --from=backend-build /app/package.json ./backend/package.json
-COPY --from=backend-build /app/tsconfig.json ./backend/tsconfig.json
-COPY --from=backend-build /app/templates ./backend/templates
 COPY ./environment/.env.backend ./backend/.env
 COPY --from=frontend-build /app/dist ./web
 
@@ -62,6 +57,9 @@ COPY --from=frontend-build /app/dist ./web
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
+
+# Create data directories for video storage
+RUN mkdir -p /data/videos
 
 ENV NODE_ENV=production
 EXPOSE 80
