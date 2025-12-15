@@ -1,8 +1,8 @@
 [submodule "app/BASinteractiveMoviesBackend"]
-    path = app/BASinteractiveMoviesBackend
-    url = https://github.com/campus-12/BASinteractiveMoviesBackend.git
-    branch = develop
+	path = app/BASinteractiveMoviesBackend
+	url = https://github.com/campus-12/BASinteractiveMoviesBackend.git
+	branch = main
 [submodule "app/BASinteractiveMoviesFrontend"]
-    path = app/BASinteractiveMoviesFrontend
-    url = https://github.com/campus-12/BASinteractiveMoviesFrontend.git
-    branch = develop
+	path = app/BASinteractiveMoviesFrontend
+	url = https://github.com/campus-12/BASinteractiveMoviesFrontend.git
+	branch = main
