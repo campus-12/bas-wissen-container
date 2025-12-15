@@ -1,6 +1,6 @@
-# BAS Prüfungsgenerator - Installation & Deployment auf VServer
+# BAS Wissen - Installation & Deployment auf VServer
 
-Diese Anleitung beschreibt die Installation und Konfiguration des BAS Prüfungsgenerators auf einem Ubuntu LTS VServer mit eigener Domain und SSL-Zertifikat.
+Diese Anleitung beschreibt die Installation und Konfiguration der BAS Wissen Plattform auf einem Ubuntu LTS VServer mit eigener Domain und SSL-Zertifikat.
 
 ## Inhaltsverzeichnis
 
@@ -31,9 +31,12 @@ Das System ist für folgende Szenarien ausgelegt:
 
 | Ressource | Spezifikation |
 |-----------|---------------|
-| **vCPUs** | 4 |
-| **RAM** | 8 GB |
-| **Storage** | 40 GB SSD |
+| **vCPUs** | 8 |
+| **RAM** | 16 GB |
+| **Storage (OS)** | 40 GB SSD |
+| **External Storage** | ≥ 20 GB (skalierbar für Video-Daten) |
+
+**Hinweis:** Die External Storage wird für Video-Uploads und deren transkodierte Varianten (Desktop/Mobile) benötigt. Der Speicherbedarf wächst mit der Anzahl und Länge der hochgeladenen Videos. Die CPU-Anforderung von 8 vCPUs unterstützt die parallele Video-Transkodierung mit ffmpeg.
 
 ---
 
@@ -111,18 +114,60 @@ sudo ufw status verbose
 
 ```bash
 # Arbeitsverzeichnis erstellen
-sudo mkdir -p /opt/bas-pruefungsgenerator
-cd /opt/bas-pruefungsgenerator
+sudo mkdir -p /opt/bas-wissen
+cd /opt/bas-wissen
 
 # Datenverzeichnisse anlegen
-sudo mkdir -p data/{app,postgres,ssl,backups,logs/caddy}
+sudo mkdir -p data/{postgres,ssl,backups,logs/caddy}
 
 # Berechtigungen setzen
-sudo chown -R $USER:$USER /opt/bas-pruefungsgenerator
+sudo chown -R $USER:$USER /opt/bas-wissen
 chmod 755 data
 ```
 
 - [x] Tested
+
+### 5. Externes Volume für Video-Storage einbinden
+
+Das externe Volume wird für Video-Uploads und deren transkodierte Varianten benötigt.
+
+#### Mount etc.
+```bash
+# Externes Volume mounten (Beispiel)
+# Volume formatieren (nur beim ersten Mal!)
+sudo mkfs.ext4 /dev/vdb
+
+# Mount-Point erstellen
+sudo mkdir -p /mnt/bas-wissen-videos
+
+# Volume mounten
+sudo mount /dev/vdb /mnt/bas-wissen-videos
+
+# Automatisches Mounten bei Systemstart konfigurieren
+# UUID des Volumes ermitteln
+sudo blkid /dev/vdb
+
+# Eintrag in /etc/fstab hinzufügen (UUID aus vorherigem Befehl verwenden)
+# Beispiel:
+# UUID=xxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx /mnt/bas-wissen-videos ext4 defaults 0 2
+echo "UUID=$(sudo blkid -s UUID -o value /dev/vdb) /mnt/bas-wissen-videos ext4 defaults 0 2" | sudo tee -a /etc/fstab
+```
+
+### Verzeichnisstruktur und Soft-Link
+
+```bash
+# Verzeichnis für Videos im externen Volume erstellen
+sudo mkdir -p /mnt/bas-wissen-videos/videos
+
+# Berechtigungen setzen
+sudo chown -R $USER:$USER /mnt/bas-wissen-videos
+
+# Symlink im Datenverzeichnis erstellen
+ln -s /mnt/bas-wissen-videos/videos /opt/bas-wissen/data/videos
+
+# Symlink verifizieren
+ls -la /opt/bas-wissen/data/
+```
 
 ---
 
@@ -137,8 +182,8 @@ Der Kunde stellt folgende Dateien bereit:
 
 ```bash
 # Zertifikate in SSL-Verzeichnis kopieren
-sudo cp /pfad/zum/cert.pem /opt/bas-pruefungsgenerator/data/ssl/cert.pem
-sudo cp /pfad/zum/key.pem /opt/bas-pruefungsgenerator/data/ssl/key.pem
+sudo cp /pfad/zum/cert.pem /opt/bas-wissen/data/ssl/cert.pem
+sudo cp /pfad/zum/key.pem /opt/bas-wissen/data/ssl/key.pem
 ```
 
 ---
@@ -146,7 +191,7 @@ sudo cp /pfad/zum/key.pem /opt/bas-pruefungsgenerator/data/ssl/key.pem
 #### ⚠️NUR ZUM TESTEN Selfsigned Zertifikat erstellen⚠️
 
 ```bash
-cd /opt/bas-prefungsgenerator/data/ssl
+cd /opt/bas-wissen/data/ssl
 
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 -keyout key.pem \
@@ -164,20 +209,20 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 #### ‼️WICHTIG: Zugriffsrechte
 ```bash
 # Berechtigungen einschränken (wichtig für Sicherheit!)
-sudo chmod 600 /opt/bas-pruefungsgenerator/data/ssl/*.pem
-sudo chown root:root /opt/bas-pruefungsgenerator/data/ssl/*.pem
+sudo chmod 600 /opt/bas-wissen/data/ssl/*.pem
+sudo chown root:root /opt/bas-wissen/data/ssl/*.pem
 ```
 
 #### Cert Prüfen
 ```bash
 # Gültigkeit prüfen
-openssl x509 -in /opt/bas-pruefungsgenerator/data/ssl/cert.pem -noout -dates
+openssl x509 -in /opt/bas-wissen/data/ssl/cert.pem -noout -dates
 
 # Subject und Issuer anzeigen
-openssl x509 -in /opt/bas-pruefungsgenerator/data/ssl/cert.pem -noout -subject -issuer
+openssl x509 -in /opt/bas-wissen/data/ssl/cert.pem -noout -subject -issuer
 
 # Alle Details anzeigen
-openssl x509 -in /opt/bas-pruefungsgenerator/data/ssl/cert.pem -text -noout
+openssl x509 -in /opt/bas-wissen/data/ssl/cert.pem -text -noout
 ```
 
 - [x] Tested
@@ -186,7 +231,7 @@ openssl x509 -in /opt/bas-pruefungsgenerator/data/ssl/cert.pem -text -noout
 
 ```bash
 # Caddyfile anlegen
-nano /opt/bas-pruefungsgenerator/Caddyfile
+nano /opt/bas-wissen/Caddyfile
 ```
 
 **Inhalt:**
@@ -199,14 +244,17 @@ nano /opt/bas-pruefungsgenerator/Caddyfile
 :443 {
     tls /ssl/cert.pem /ssl/key.pem
 
-    # Backend API
+    # Backend API (inkl. Video-Streaming)
     handle /api/* {
-        reverse_proxy localhost:3000
-    }
-
-    # Swagger Dokumentation
-    handle /doc* {
-        reverse_proxy localhost:3000
+        reverse_proxy localhost:3000 {
+            # Buffering deaktivieren für Video-Streaming
+            flush_interval -1
+            # Timeouts für große Video-Uploads und -Streams
+            transport http {
+                read_timeout 300s
+                write_timeout 300s
+            }
+        }
     }
 
     # Frontend (SPA)
@@ -250,7 +298,7 @@ nano /opt/bas-pruefungsgenerator/Caddyfile
 ### 1. docker-compose.yml erstellen
 
 ```bash
-nano /opt/bas-pruefungsgenerator/docker-compose.yml
+nano /opt/bas-wissen/docker-compose.yml
 ```
 
 **Inhalt:**
@@ -258,15 +306,15 @@ nano /opt/bas-pruefungsgenerator/docker-compose.yml
 ```yaml
 services:
   app:
-    image: ghcr.io/campus-12/bas-pruefungsgenerator-container:latest
-    container_name: bas-app
+    image: ghcr.io/campus-12/bas-wissen-container:latest
+    container_name: bas-wissen-app
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      # Persistente Daten
-      - ./data/app:/data
+      # Video Storage (Symlink zu externem Volume)
+      - ./data/videos:/data/videos
       # Custom Caddyfile mit SSL
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # SSL-Zertifikate
@@ -277,40 +325,52 @@ services:
       db:
         condition: service_healthy
     environment:
-      # Node.js Performance (für 8GB RAM Server)
+      # Node.js Configuration
       - NODE_ENV=production
+      - APP_ENV=${APP_ENV:-production}
+      - PORT=3000
       - NODE_OPTIONS=--max-old-space-size=2048
 
-      # Backend Configuration
-      - CONSOLE_LOG_LEVEL=info
-      - ENABLE_SWAGGER=true
-      # Swagger verwendet Standard-Credentials aus Container (User: swagger, Password: swagger)
-      # - SWAGGER_USER=${SWAGGER_USER}
-      # - SWAGGER_USER_PASSWORD=${SWAGGER_PASSWORD}
-
       # Database
-      - DB_CONNECTION=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+      - DATABASE_TYPE=postgres
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+
+      # JWT Configuration
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TOKEN_EXPIRES_IN=${JWT_ACCESS_TOKEN_EXPIRES_IN:-45m}
+      - JWT_REFRESH_TOKEN_EXPIRES_IN=${JWT_REFRESH_TOKEN_EXPIRES_IN:-5d}
+
+      # Application Name
+      - APP_NAME=BAS Wissen
+
+      # Video Storage & Processing
+      - VIDEO_STORAGE_PATH=/data/videos
+      - VIDEO_ALLOWED_MIME_TYPES=${VIDEO_ALLOWED_MIME_TYPES:-video/mp4,video/webm,video/ogg,video/quicktime}
+      - VIDEO_DESKTOP_MAX_WIDTH=${VIDEO_DESKTOP_MAX_WIDTH:-1920}
+      - VIDEO_DESKTOP_CRF=${VIDEO_DESKTOP_CRF:-22}
+      - VIDEO_DESKTOP_AUDIO_BITRATE=${VIDEO_DESKTOP_AUDIO_BITRATE:-128k}
+      - VIDEO_MOBILE_MAX_WIDTH=${VIDEO_MOBILE_MAX_WIDTH:-720}
+      - VIDEO_MOBILE_CRF=${VIDEO_MOBILE_CRF:-26}
+      - VIDEO_MOBILE_AUDIO_BITRATE=${VIDEO_MOBILE_AUDIO_BITRATE:-96k}
 
       # LDAP Configuration
       - LDAP_SERVER_URL=${LDAP_SERVER_URL}
       - LDAP_BIND_DN=${LDAP_BIND_DN}
       - LDAP_BIND_CREDENTIALS=${LDAP_BIND_CREDENTIALS}
       - LDAP_SEARCH_BASE=${LDAP_SEARCH_BASE}
-      - 'LDAP_SEARCH_FILTER=(sAMAccountName={{username}})'
-      - 'LDAP_USER_OBJECT_CLASSES=${LDAP_USER_OBJECT_CLASSES:-user,person}'
-      - LDAP_GROUP_FILTER=${LDAP_GROUP_FILTER}
-      - LDAP_GROUP_ADMIN=${LDAP_GROUP_ADMIN:-SG_PFG-Admin}
-      - LDAP_GROUP_EDUCATOR=${LDAP_GROUP_EDUCATOR:-SG_PFG-Educator}
-      - LDAP_GROUP_TRAINEE=${LDAP_GROUP_TRAINEE:-SG_PFG-Trainee}
+      - LDAP_SEARCH_FILTER=${LDAP_SEARCH_FILTER:-(|(sAMAccountName={{username}})(uid={{username}}))}
+      - LDAP_TIMEOUT_MS=${LDAP_TIMEOUT_MS:-10000}
+      - LDAP_CONNECT_TIMEOUT_MS=${LDAP_CONNECT_TIMEOUT_MS:-10000}
 
-      # LDAP Sync (optional)
-      - LDAP_SYNC_ENABLED=${LDAP_SYNC_ENABLED:-true}
-      - LDAP_SYNC_CRON=${LDAP_SYNC_CRON:-0 */1 * * *}
+      # Optional: CORS & Cookie Configuration
+      - FRONTEND_ORIGINS=${FRONTEND_ORIGINS:-}
+      - ALLOW_NO_ORIGIN=${ALLOW_NO_ORIGIN:-true}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
 
-      # JWT Secret
-      - JWT_SECRET=${JWT_SECRET}
+      # Optional: Debug Flags
+      - DEBUG_LDAP=${DEBUG_LDAP:-0}
     healthcheck:
-      test: ["CMD", "wget", "--no-check-certificate", "--spider", "-q", "https://localhost/api/core/version"]
+      test: ["CMD", "wget", "--no-check-certificate", "--spider", "-q", "https://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -320,7 +380,7 @@ services:
 
   db:
     image: postgres:17-alpine
-    container_name: bas-db
+    container_name: bas-wissen-db
     restart: unless-stopped
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
@@ -340,7 +400,7 @@ services:
       - bas-network
     command:
       - "postgres"
-      # Performance Tuning für 8GB RAM Server
+      # Performance Tuning (PostgreSQL nutzt ~4GB, Rest für Node.js + ffmpeg)
       - "-c"
       - "shared_buffers=1GB"           # 25% von 4GB (für DB reserviert)
       - "-c"
@@ -373,7 +433,7 @@ networks:
 ### 2. Environment-Variablen konfigurieren
 
 ```bash
-nano /opt/bas-pruefungsgenerator/.env
+nano /opt/bas-wissen/.env
 ```
 
 **Inhalt (.env):**
@@ -439,7 +499,7 @@ echo "JWT_SECRET=$(openssl rand -base64 64)"
 
 ```bash
 # .env-Datei vor unbefugtem Zugriff schützen
-chmod 600 /opt/bas-pruefungsgenerator/.env
+chmod 600 /opt/bas-wissen/.env
 ```
 
 - [x] Tested
@@ -463,7 +523,7 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u - --password-stdin
 ### 2. Docker Image pullen
 
 ```bash
-cd /opt/bas-pruefungsgenerator
+cd /opt/bas-wissen
 
 # Image herunterladen
 docker pull ghcr.io/campus-12/bas-pruefungsgenerator-container:latest
@@ -525,7 +585,7 @@ curl -k https://ihre-domain.de/api/core/version
 ### 1. Automatisches Backup-Script erstellen
 
 ```bash
-nano /opt/bas-pruefungsgenerator/backup.sh
+nano /opt/bas-wissen/backup.sh
 ```
 
 **Inhalt:**
@@ -533,16 +593,16 @@ nano /opt/bas-pruefungsgenerator/backup.sh
 ```bash
 #!/bin/bash
 #
-# BAS Prüfungsgenerator - Backup Script
-# Führt tägliche Backups von Datenbank und App-Daten durch
+# BAS Wissen - Backup Script
+# Führt tägliche Backups von Datenbank und Video-Daten durch
 #
 
 set -e  # Bei Fehler abbrechen
 
-BACKUP_DIR="/opt/bas-pruefungsgenerator/data/backups"
+BACKUP_DIR="/opt/bas-wissen/data/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
 RETENTION_DAYS=30
-COMPOSE_FILE="/opt/bas-pruefungsgenerator/docker-compose.yml"
+COMPOSE_FILE="/opt/bas-wissen/docker-compose.yml"
 
 echo "=========================================="
 echo "BAS Backup gestartet: $(date)"
@@ -563,10 +623,10 @@ docker compose -f "$COMPOSE_FILE" exec -T db \
 
 echo "PostgreSQL Backup erstellt: db_backup_$DATE.dump"
 
-# App-Daten Backup (Templates, Uploads)
-echo "Erstelle App-Daten Backup..."
-tar -czf "$BACKUP_DIR/app_data_$DATE.tar.gz" \
-  -C /opt/bas-pruefungsgenerator/data app
+# Video-Daten Backup
+echo "Erstelle Video-Daten Backup..."
+tar -czf "$BACKUP_DIR/video_data_$DATE.tar.gz" \
+  -C /opt/bas-wissen/data videos
 
 echo "App-Daten Backup erstellt: app_data_$DATE.tar.gz"
 
@@ -590,7 +650,7 @@ echo "=========================================="
 **Script ausführbar machen:**
 
 ```bash
-chmod +x /opt/bas-pruefungsgenerator/backup.sh
+chmod +x /opt/bas-wissen/backup.sh
 ```
 
 - [x] Tested
@@ -605,7 +665,7 @@ crontab -e
 
 # Folgenden Eintrag hinzufügen:
 # Backup täglich um 3:00 Uhr
-0 3 * * * /opt/bas-pruefungsgenerator/backup.sh >> /var/log/bas-backup.log 2>&1
+0 3 * * * /opt/bas-wissen/backup.sh >> /var/log/bas-backup.log 2>&1
 ```
 
 - [x] Tested
@@ -620,8 +680,8 @@ docker compose -f docker-compose.yml stop app
 
 # Datenbank aus Custom-Format wiederherstellen
 docker compose -f docker-compose.yml exec -T db \
-  pg_restore -U bas_user -d bas_pruefungsgenerator --clean --if-exists \
-  < /opt/bas-pruefungsgenerator/data/backups/db_backup_YYYYMMDD_HHMMSS.dump
+  pg_restore -U bas_user -d bas_wissen --clean --if-exists \
+  < /opt/bas-wissen/data/backups/db_backup_YYYYMMDD_HHMMSS.dump
 
 # Container neu starten
 docker compose -f docker-compose.yml start app
@@ -635,8 +695,8 @@ docker compose -f docker-compose.yml start app
 docker compose -f docker-compose.yml stop app
 
 # Backup entpacken (sudo wegen Wiederherstellung der Timestamps)
-sudo tar -xzf /opt/bas-pruefungsgenerator/data/backups/app_data_YYYYMMDD_HHMMSS.tar.gz \
-  -C /opt/bas-pruefungsgenerator/data
+sudo tar -xzf /opt/bas-wissen/data/backups/video_data_YYYYMMDD_HHMMSS.tar.gz \
+  -C /opt/bas-wissen/data
 
 # Container neu starten
 docker compose -f docker-compose.yml restart app
