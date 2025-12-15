@@ -1,8 +1,0 @@
-[submodule "app/bas-pruefungsgenerator-backend"]
-    path = app/bas-pruefungsgenerator-backend
-    url = https://github.com/campus-12/bas-pruefungsgenerator-backend.git
-    branch = develop
-[submodule "app/bas-pruefungsgenerator-web"]
-    path = app/bas-pruefungsgenerator-web
-    url = https://github.com/campus-12/bas-pruefungsgenerator-web.git
-    branch = develop
