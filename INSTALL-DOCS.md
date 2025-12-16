@@ -63,7 +63,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl wget git nano ufw logrotate
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 2. Docker Installation
 
@@ -81,7 +81,7 @@ sudo usermod -aG docker $USER
 # Abmelden und neu anmelden, damit Gruppenzugehörigkeit wirksam wird
 ```
 
-- [x] Tested
+- [ ] Tested
 
 **Docker Installation verifizieren:**
 
@@ -91,7 +91,7 @@ docker --version
 docker compose version
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 3. Firewall konfigurieren
 
@@ -108,7 +108,7 @@ sudo ufw enable
 sudo ufw status verbose
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 4. Verzeichnisstruktur erstellen
 
@@ -125,7 +125,7 @@ sudo chown -R $USER:$USER /opt/bas-wissen
 chmod 755 data
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 5. Externes Volume für Video-Storage einbinden
 
@@ -225,7 +225,7 @@ openssl x509 -in /opt/bas-wissen/data/ssl/cert.pem -noout -subject -issuer
 openssl x509 -in /opt/bas-wissen/data/ssl/cert.pem -text -noout
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 2. Caddyfile für Production erstellen
 
@@ -289,7 +289,7 @@ nano /opt/bas-wissen/Caddyfile
 }
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ---
 
@@ -428,7 +428,7 @@ networks:
     driver: bridge
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 2. Environment-Variablen konfigurieren
 
@@ -518,7 +518,7 @@ LDAP_SEARCH_FILTER=(|(sAMAccountName={{username}})(uid={{username}}))
 # DEBUG_LDAP=1  # Aktiviert zusätzliche LDAP-Logs
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 3. Secrets generieren
 
@@ -532,7 +532,7 @@ echo "POSTGRES_PASSWORD=$(openssl rand -hex 32)"
 echo "JWT_SECRET=$(openssl rand -base64 64)"
 ```
 
-- [x] Tested
+- [ ] Tested
 
 **Wichtig:** Kopieren Sie die generierten Werte in die `.env` Datei.
 
@@ -543,7 +543,7 @@ echo "JWT_SECRET=$(openssl rand -base64 64)"
 chmod 600 /opt/bas-wissen/.env
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ---
 
@@ -559,7 +559,7 @@ export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
 echo $GITHUB_TOKEN | docker login ghcr.io -u - --password-stdin
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 2. Docker Image pullen
 
@@ -570,7 +570,7 @@ cd /opt/bas-wissen
 docker pull ghcr.io/campus-12/bas-wissen-container:latest
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 3. Container starten
 
@@ -582,7 +582,7 @@ docker compose -f docker-compose.yml --env-file .env up -d
 docker compose -f docker-compose.yml logs -f
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 4. Installation verifizieren
 
@@ -609,7 +609,7 @@ curl -k https://ihre-domain.de/api/
 # https://ihre-domain.de/api/docs
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 5. Erste Schritte nach Installation
 
@@ -619,7 +619,7 @@ curl -k https://ihre-domain.de/api/
 2. Mit LDAP-Credentials einloggen
 3. Prüfen, ob Benutzerrolle korrekt zugewiesen wurde
 
-- [x] Tested
+- [ ] Tested
 
 ## Backup-Strategie
 
@@ -684,7 +684,7 @@ echo "BAS Backup abgeschlossen: $(date)"
 echo "=========================================="
 ```
 
-- [x] Tested
+- [ ] Tested
 
 
 **Script ausführbar machen:**
@@ -693,7 +693,7 @@ echo "=========================================="
 chmod +x /opt/bas-wissen/backup.sh
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 2. Cron-Job für automatische Backups
 
@@ -708,7 +708,7 @@ crontab -e
 0 3 * * * /opt/bas-wissen/backup.sh >> /var/log/bas-backup.log 2>&1
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### 3. Backup wiederherstellen
 
@@ -727,7 +727,7 @@ docker compose -f docker-compose.yml exec -T db \
 docker compose -f docker-compose.yml start app
 ```
 
-- [x] Tested
+- [ ] Tested
 
 **Video-Daten wiederherstellen:**
 
@@ -735,7 +735,7 @@ docker compose -f docker-compose.yml start app
 
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ---
 
@@ -776,7 +776,7 @@ sudo nano /etc/logrotate.d/bas-wissen
 ```
 
 
-- [x] Tested
+- [ ] Tested
 
 ### 2. Healthcheck-Script
 
@@ -816,7 +816,7 @@ OK: Application is healthy
 ```
 
 
-- [x] Tested
+- [ ] Tested
 
 ### 3. Wichtige Monitoring-Befehle
 
@@ -892,7 +892,7 @@ crontab -e
 # 0 4 * * 0 /opt/bas-wissen/maintenance.sh >> /var/log/bas-maintenance.log 2>&1
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ---
 
@@ -924,7 +924,7 @@ docker compose -f docker-compose.yml logs -f
 ./healthcheck.sh
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ### Rollback durchführen
 
@@ -1103,7 +1103,7 @@ nslookup bas-wissen.ihre-domain.de
 # https://www.whatsmydns.net
 ```
 
-- [x] Tested
+- [ ] Tested
 
 ---
 
@@ -1131,4 +1131,4 @@ Nach der Installation folgende Punkte prüfen:
 ---
 
 **Letzte Aktualisierung**: Dezember 2025
-**Version**: 2.0 (BAS Wissen)
+**Version**: 1.0
