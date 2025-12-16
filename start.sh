@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "Starting BAS Prüfungsgenerator..."
+echo "Starting BAS Wissen..."
 
 # Start backend in background
 echo "Starting backend on port 3000..."

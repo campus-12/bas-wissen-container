@@ -1,7 +1,7 @@
 
-# BAS Prüfungsgenerator - Hosting & Deployment
+# BAS Wissen - Hosting & Deployment
 
-Dieses Projekt stellt ein Docker-Image bereit, das Frontend und Backend des BAS Prüfungsgenerators enthält. Das Image wird automatisch unter `ghcr.io/campus-12/bas-pruefungsgenerator-container:latest` veröffentlicht (siehe GitHub Actions Workflow `.github/workflows/docker-publish.yml`).
+Dieses Projekt stellt ein Docker-Image bereit, das Frontend und Backend von BAS Wissen enthält. Das Image wird automatisch unter `ghcr.io/campus-12/bas-wissen-container:latest` veröffentlicht (siehe GitHub Actions Workflow `.github/workflows/docker-publish.yml`).
 
 ## Voraussetzungen
 
@@ -35,64 +35,99 @@ version: '3.8'
 
 services:
 	app:
-		image: ghcr.io/campus-12/bas-pruefungsgenerator-container:latest
+		image: ghcr.io/campus-12/bas-wissen-container:latest
+		container_name: bas-wissen-app
 		ports:
 			- "80:80"
+			- "443:443"
 		volumes:
-			- ${APP_DATA_PATH:-app_data}:/data
+			# Video Storage (symlink to external volume)
+			- ./data/videos:/data/videos
+			# Custom Caddyfile with SSL
+			- ./Caddyfile:/etc/caddy/Caddyfile:ro
+			# SSL certificates
+			- ./data/ssl:/ssl:ro
+			# Logs
+			- ./data/logs/caddy:/var/log/caddy
 		depends_on:
-			- db
+			db:
+				condition: service_healthy
 		environment:
-			# Backend Environment Variables (Required)
-			- CONSOLE_LOG_LEVEL=*
-			- DB_CONNECTION=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}?sslmode=disable
-			# LDAP Configuration (Required)
-			- LDAP_SERVER_URL=ldap://ldap.example.com:389
-			- LDAP_BIND_DN=cn=admin,dc=example,dc=com
-			- LDAP_BIND_CREDENTIALS=admin
-			- LDAP_SEARCH_BASE=ou=users,dc=example,dc=com
-			- LDAP_GROUP_FILTER=(memberOf=cn={{group}},ou=Groups,dc=example,dc=com)
-			# LDAP optional
-			- LDAP_SYNC_ENABLED=true
-			- LDAP_SYNC_CRON=0 */1 * * *
-			- LDAP_SEARCH_FILTER=(sAMAccountName={{username}})
-			- LDAP_USER_OBJECT_CLASSES=user,person
+			# Node.js Configuration
+			- NODE_ENV=production
+			- APP_ENV=${APP_ENV:-production}
+			- PORT=3000
+			
+			# Database
+			- DATABASE_TYPE=postgres
+			- DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+			
+			# JWT Configuration
+			- JWT_SECRET=${JWT_SECRET}
+			- JWT_ACCESS_TOKEN_EXPIRES_IN=45m
+			- JWT_REFRESH_TOKEN_EXPIRES_IN=5d
+			
+			# Video Processing
+			- VIDEO_STORAGE_PATH=/data/videos
+			- VIDEO_ALLOWED_MIME_TYPES=video/mp4,video/webm,video/ogg,video/quicktime
+			
+			# LDAP Configuration
+			- LDAP_SERVER_URL=${LDAP_SERVER_URL}
+			- LDAP_BIND_DN=${LDAP_BIND_DN}
+			- LDAP_BIND_CREDENTIALS=${LDAP_BIND_CREDENTIALS}
+			- LDAP_SEARCH_BASE=${LDAP_SEARCH_BASE}
+			- LDAP_SEARCH_FILTER=(|(sAMAccountName={{username}})(uid={{username}}))
+			
+			# Optional
+			- ALLOW_NO_ORIGIN=true
 
 	db:
-		image: postgres:17
+		image: postgres:17-alpine
+		container_name: bas-wissen-db
 		environment:
-			- POSTGRES_USER=${POSTGRES_USER:-postgres}
-			- POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-			- POSTGRES_DB=${POSTGRES_DB:-postgres}
+			- POSTGRES_USER=${POSTGRES_USER}
+			- POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+			- POSTGRES_DB=${POSTGRES_DB}
 		volumes:
-			- ${POSTGRES_DATA_PATH:-postgres_data}:/var/lib/postgresql/data
+			- ./data/postgres:/var/lib/postgresql/data
 		ports:
-			- "5432:5432"
+			- "127.0.0.1:5432:5432"  # Nur localhost-Zugriff
 		healthcheck:
-			test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+			test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
 			interval: 10s
 			timeout: 5s
 			retries: 5
 
-volumes:
-	app_data:
-	postgres_data:
+networks:
+	bas-network:
+		driver: bridge
+
 ```
 
 ### Verwendung mit Umgebungsvariablen
 
-Erstellen Sie z.B. eine `.env` Datei im gleichen Verzeichnis wie die `docker-compose.yml`:
+Erstellen Sie eine `.env` Datei im gleichen Verzeichnis wie die `docker-compose.yml`:
 
 ```bash
 # .env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_secure_password_here
-POSTGRES_DB=postgres
 
-# Optional: Pfade für persistente Daten auf dem Host-System
-# Wenn nicht gesetzt, werden Docker Volumes verwendet
-APP_DATA_PATH=./data/app
-POSTGRES_DATA_PATH=./data/postgres
+# PostgreSQL Configuration
+POSTGRES_USER=bas_user
+POSTGRES_PASSWORD=<SICHERES_PASSWORT>
+POSTGRES_DB=bas_wissen
+
+# JWT Configuration
+JWT_SECRET=<JWT_SECRET>
+
+# LDAP Configuration
+LDAP_SERVER_URL=ldap://ldap.example.com:389
+LDAP_BIND_DN=cn=admin,dc=example,dc=com
+LDAP_BIND_CREDENTIALS=<LDAP_PASSWORD>
+LDAP_SEARCH_BASE=ou=users,dc=example,dc=com
+
+# Optional: Application Environment
+# APP_ENV=develop  # Uncomment to enable Swagger UI
+APP_ENV=production
 ```
 
 Starten Sie die Container:
@@ -101,42 +136,49 @@ Starten Sie die Container:
 docker-compose up -d
 ```
 
-Die Anwendung ist nach dem Build unter `http://localhost` erreichbar.
+Die Anwendung ist nach dem Build unter `http://localhost` (oder `https://ihre-domain.de` mit SSL) erreichbar.
 
-## Hinweise
+## Wichtige Hinweise
 
-- Die Umgebungsvariablen können nach Bedarf angepasst werden.
-- **Datenpersistierung:**
-  - **Anwendungsdaten**: Templates und andere App-Daten werden im Volume `app_data` gespeichert
-  - **Datenbankdaten**: PostgreSQL-Daten werden im Volume `postgres_data` gespeichert
-- Für Produktion sollten Passwörter und Secrets angepasst werden.
+- **Secrets generieren**: Verwenden Sie sichere, zufällig generierte Werte für `POSTGRES_PASSWORD` und `JWT_SECRET`
+  ```bash
+  openssl rand -hex 32  # PostgreSQL Passwort
+  openssl rand -base64 64  # JWT Secret
+  ```
+- **SSL-Zertifikate**: Für HTTPS müssen Sie ein gültiges SSL-Zertifikat in `./data/ssl/` bereitstellen
+- **Video-Storage**: Videos werden auf einem externen Volume gespeichert (siehe Produktions-Setup)
+- **LDAP-Gruppen**: Die folgenden Gruppen müssen im LDAP/AD existieren:
+  - `SG_BAS-Wissen-Admin` (Volle Rechte)
+  - `SG_BAS-Wissen-Creator` (Kann Videos hochladen)
+  - `SG_BAS-Wissen-User` (Kann Videos anschauen)
 
 ## Datenverzeichnis-Struktur
 
 ```text
 /data
-	/templates   # Enthält Vorlagen für Prüfungen und Abschnitte
+  /videos        # Video-Dateien (Desktop/Mobile Varianten)
+  /postgres      # PostgreSQL Datenbank
+  /ssl           # SSL-Zertifikate (cert.pem, key.pem)
+  /logs/caddy    # Caddy Access Logs
+  /backups       # Datenbank-Backups
 ```
 
 ## Persistente Daten
 
-Die Anwendung verwendet zwei verschiedene Volumes für persistente Daten:
+Die Anwendung speichert folgende Daten persistent:
 
-- **`app_data`**: Speichert Anwendungsdaten wie Templates, Logs und generierte Dateien
-- **`postgres_data`**: Speichert die PostgreSQL-Datenbankdateien
+- **`./data/videos`**: Video-Uploads und transkodierte Varianten (symlink zu externem Volume empfohlen)
+- **`./data/postgres`**: PostgreSQL-Datenbankdateien
+- **`./data/ssl`**: SSL-Zertifikate für HTTPS
+- **`./data/logs`**: Anwendungs- und Caddy-Logs
+- **`./data/backups`**: Automatische Datenbank-Backups
 
-### Konfiguration der Speicherpfade
+**Wichtig**: Für Produktionsumgebungen sollte das Video-Storage auf einem separaten, skalierbaren Volume liegen.
 
-Standardmäßig werden Docker Volumes verwendet. Sie können jedoch über Umgebungsvariablen eigene Host-Pfade definieren:
+## Weitere Dokumentation
 
-```bash
-# Beispiel für Host-Pfade statt Docker Volumes
-APP_DATA_PATH=./data/app          # Anwendungsdaten
-POSTGRES_DATA_PATH=./data/postgres # Datenbankdaten
-```
-
-**Hinweis**: Stellen Sie sicher, dass die angegebenen Verzeichnisse existieren und die entsprechenden Berechtigungen haben.
+Für eine detaillierte Installations- und Deployment-Anleitung siehe [INSTALL-DOCS.md](./INSTALL-DOCS.md).
 
 ---
 
-**Hinweis:** Für produktive Umgebungen sollten alle Passwörter und Secrets sicher gesetzt werden.
+**Hinweis:** Für produktive Umgebungen sollten alle Passwörter und Secrets sicher gesetzt werden. Die vollständige Produktions-Konfiguration ist in [INSTALL-DOCS.md](./INSTALL-DOCS.md) dokumentiert.

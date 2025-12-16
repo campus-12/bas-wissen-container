@@ -333,7 +333,7 @@ services:
 
       # Database
       - DATABASE_TYPE=postgres
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
 
       # JWT Configuration
       - JWT_SECRET=${JWT_SECRET}
@@ -439,25 +439,46 @@ nano /opt/bas-wissen/.env
 **Inhalt (.env):**
 
 ```bash
+# ========================================
 # PostgreSQL Configuration
+# ========================================
 POSTGRES_USER=bas_user
 POSTGRES_PASSWORD=<HIER_SICHERES_PASSWORT_EINTRAGEN>
-POSTGRES_DB=bas_pruefungsgenerator
+POSTGRES_DB=bas_wissen
 
-# Swagger Authentication
-# Verwendet Standard-Credentials aus Container: User=swagger, Password=swagger
-# Falls eigene Credentials gewünscht: Variablen aktivieren (auch in docker-compose.yml) und bcrypt-Hash generieren
-# SWAGGER_USER=admin
-# SWAGGER_PASSWORD=<BCRYPT_HASH_HIER>
-
-# JWT Secret (64+ Zeichen)
+# ========================================
+# JWT Configuration
+# ========================================
 JWT_SECRET=<HIER_JWT_SECRET_EINTRAGEN>
+JWT_ACCESS_TOKEN_EXPIRES_IN=45m
+JWT_REFRESH_TOKEN_EXPIRES_IN=5d
+
+# ========================================
+# Application Configuration
+# ========================================
+# APP_ENV=develop  # Uncomment to enable Swagger UI at /api
+APP_ENV=production
+
+# ========================================
+# Video Processing Configuration
+# ========================================
+# Video file types
+VIDEO_ALLOWED_MIME_TYPES=video/mp4,video/webm,video/ogg,video/quicktime
+
+# Desktop quality settings
+VIDEO_DESKTOP_MAX_WIDTH=1920
+VIDEO_DESKTOP_CRF=22
+VIDEO_DESKTOP_AUDIO_BITRATE=128k
+
+# Mobile quality settings
+VIDEO_MOBILE_MAX_WIDTH=720
+VIDEO_MOBILE_CRF=26
+VIDEO_MOBILE_AUDIO_BITRATE=96k
 
 # ========================================
 # LDAP Configuration
 # ========================================
-
-# LDAP Server
+# LDAP Server URL
 LDAP_SERVER_URL=ldap://188.245.245.81:1389
 # oder für LDAPS:
 # LDAP_SERVER_URL=ldaps://kunde-ldap.domain.de:636
@@ -469,12 +490,32 @@ LDAP_BIND_CREDENTIALS=<LDAP_SERVICE_PASSWORD>
 # Benutzersuche
 LDAP_SEARCH_BASE=ou=users,dc=miracode,dc=io
 
-# Gruppenfilter
-LDAP_GROUP_FILTER=(memberOf=cn={{group}},ou=Groups,dc=miracode,dc=io)
+# Search Filter (Default sucht nach sAMAccountName oder uid)
+LDAP_SEARCH_FILTER=(|(sAMAccountName={{username}})(uid={{username}}))
 
-# LDAP Synchronisation (optional)
-LDAP_SYNC_ENABLED=true
-LDAP_SYNC_CRON=0 */1 * * *
+# LDAP Timeouts (optional, Defaults: 10000ms)
+# LDAP_TIMEOUT_MS=10000
+# LDAP_CONNECT_TIMEOUT_MS=10000
+
+# ========================================
+# LDAP Gruppen (nur zur Dokumentation)
+# ========================================
+# Die folgenden Gruppen sind im Backend hardcoded:
+# - SG_BAS-Wissen-Admin   (Volle Rechte)
+# - SG_BAS-Wissen-Creator (Kann Videos hochladen und verwalten)
+# - SG_BAS-Wissen-User    (Kann Videos anschauen)
+
+# ========================================
+# Optional: CORS & Cookie Configuration
+# ========================================
+# Nur benötigt, wenn Frontend auf anderer Domain läuft
+# FRONTEND_ORIGINS=https://andere-domain.de
+# COOKIE_DOMAIN=.bas.de
+
+# ========================================
+# Optional: Debug Flags
+# ========================================
+# DEBUG_LDAP=1  # Aktiviert zusätzliche LDAP-Logs
 ```
 
 - [x] Tested
@@ -526,7 +567,7 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u - --password-stdin
 cd /opt/bas-wissen
 
 # Image herunterladen
-docker pull ghcr.io/campus-12/bas-pruefungsgenerator-container:latest
+docker pull ghcr.io/campus-12/bas-wissen-container:latest
 ```
 
 - [x] Tested
@@ -552,20 +593,20 @@ docker compose -f docker-compose.yml logs -f
 docker compose -f docker-compose.yml ps
 
 # Erwartete Ausgabe:
-# NAME        IMAGE                                                 STATUS
-# bas-app     ghcr.io/campus-12/bas-pruefungsgenerator-container   Up (healthy)
-# bas-db      postgres:17-alpine                                    Up (healthy)
+# NAME               IMAGE                                       STATUS
+# bas-wissen-app     ghcr.io/campus-12/bas-wissen-container     Up (healthy)
+# bas-wissen-db      postgres:17-alpine                         Up (healthy)
 
 # 2. Backend-API testen
-curl -k https://ihre-domain.de/api/core/version
+curl -k https://ihre-domain.de/api/
 
-# Erwartete Ausgabe: {"version": "x.x.x"}
+# Erwartete Ausgabe: "Hello from BAS Wissen API!"
 
 # 3. Frontend testen (im Browser)
 # https://ihre-domain.de
 
-# 4. Swagger-Dokumentation (im Browser mit Basic Auth)
-# https://ihre-domain.de/doc
+# 4. Swagger-Dokumentation (nur wenn APP_ENV=develop)
+# https://ihre-domain.de/api/docs
 ```
 
 - [x] Tested
@@ -611,24 +652,23 @@ echo "=========================================="
 # PostgreSQL Dump
 echo "Erstelle PostgreSQL Backup..."
 docker compose -f "$COMPOSE_FILE" exec -T db \
-  pg_dump -U bas_user -d bas_pruefungsgenerator \
+  pg_dump -U bas_user -d bas_wissen \
   --format=custom \
   --compress=9 \
   > "$BACKUP_DIR/db_backup_$DATE.dump"
 
 # Alternativ: SQL-Format
 #docker compose -f "$COMPOSE_FILE" exec -T db \
-#  pg_dump -U bas_user -d bas_pruefungsgenerator | \
+#  pg_dump -U bas_user -d bas_wissen | \
 #  gzip > "$BACKUP_DIR/db_backup_$DATE.sql.gz"
 
 echo "PostgreSQL Backup erstellt: db_backup_$DATE.dump"
 
-# Video-Daten Backup
-echo "Erstelle Video-Daten Backup..."
-tar -czf "$BACKUP_DIR/video_data_$DATE.tar.gz" \
-  -C /opt/bas-wissen/data videos
-
-echo "App-Daten Backup erstellt: app_data_$DATE.tar.gz"
+# HINWEIS: Video-Daten werden NICHT gesichert
+# - Videos liegen auf externem Volume
+# - Zu groß für reguläre Backups
+# - Separate Backup-Strategie auf Storage-Ebene erforderlich
+echo "Video-Daten: Nicht in diesem Backup enthalten (externes Volume)"
 
 # Alte Backups löschen (älter als RETENTION_DAYS)
 echo "Lösche alte Backups (älter als $RETENTION_DAYS Tage)..."
@@ -689,17 +729,10 @@ docker compose -f docker-compose.yml start app
 
 - [x] Tested
 
-**App-Daten wiederherstellen:**
+**Video-Daten wiederherstellen:**
 
-```bash
-docker compose -f docker-compose.yml stop app
+⚠️ **Hinweis:** Video-Daten werden nicht durch das Backup-Script gesichert, da sie auf einem externen Volume liegen. Für die Wiederherstellung von Video-Daten eigene Backup-Restore-Lösung verwenden.
 
-# Backup entpacken (sudo wegen Wiederherstellung der Timestamps)
-sudo tar -xzf /opt/bas-wissen/data/backups/video_data_YYYYMMDD_HHMMSS.tar.gz \
-  -C /opt/bas-wissen/data
-
-# Container neu starten
-docker compose -f docker-compose.yml restart app
 ```
 
 - [x] Tested
@@ -711,13 +744,13 @@ docker compose -f docker-compose.yml restart app
 ### 1. Log-Rotation konfigurieren
 
 ```bash
-sudo nano /etc/logrotate.d/bas-pruefungsgenerator
+sudo nano /etc/logrotate.d/bas-wissen
 ```
 
 **Inhalt:**
 
 ```
-/opt/bas-pruefungsgenerator/data/logs/caddy/*.log {
+/opt/bas-wissen/data/logs/caddy/*.log {
     daily
     rotate 14
     compress
@@ -727,7 +760,7 @@ sudo nano /etc/logrotate.d/bas-pruefungsgenerator
     create 0640 root root
     sharedscripts
     postrotate
-        docker compose -f /opt/bas-pruefungsgenerator/docker-compose.yml exec app killall -HUP caddy 2>/dev/null || true
+        docker compose -f /opt/bas-wissen/docker-compose.yml exec app killall -HUP caddy 2>/dev/null || true
     endscript
 }
 
@@ -748,7 +781,7 @@ sudo nano /etc/logrotate.d/bas-pruefungsgenerator
 ### 2. Healthcheck-Script
 
 ```bash
-nano /opt/bas-pruefungsgenerator/healthcheck.sh
+nano /opt/bas-wissen/healthcheck.sh
 ```
 
 **Inhalt:**
@@ -763,7 +796,7 @@ DOMAIN="https://localhost"
 TIMEOUT=10
 
 # Backend API prüfen
-if curl -k -f -m $TIMEOUT "$DOMAIN/api/core/version" > /dev/null 2>&1; then
+if curl -k -f -m $TIMEOUT "$DOMAIN/api/" > /dev/null 2>&1; then
     echo "OK: Application is healthy"
     exit 0
 else
@@ -773,9 +806,9 @@ fi
 ```
 
 ```bash
-chmod +x /opt/bas-pruefungsgenerator/healthcheck.sh
+chmod +x /opt/bas-wissen/healthcheck.sh
 
-/opt/bas-pruefungsgenerator/healthcheck.sh
+/opt/bas-wissen/healthcheck.sh
 ```
 Output:
 ```
@@ -796,15 +829,15 @@ docker compose -f docker-compose.yml logs -f app
 docker compose -f docker-compose.yml logs -f db
 
 # Ressourcenverbrauch
-docker stats bas-app bas-db
+docker stats bas-wissen-app bas-wissen-db
 
 # Festplattenplatz prüfen
-df -h /opt/bas-pruefungsgenerator
-du -sh /opt/bas-pruefungsgenerator/data/*
+df -h /opt/bas-wissen
+du -sh /opt/bas-wissen/data/*
 
 # PostgreSQL-Statistiken
 docker compose -f docker-compose.yml exec db \
-  psql -U bas_user -d bas_pruefungsgenerator -c "
+  psql -U bas_user -d bas_wissen -c "
     SELECT schemaname, tablename,
            pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
     FROM pg_tables
@@ -817,7 +850,7 @@ docker compose -f docker-compose.yml exec db \
 ### 4. Wartungsfenster-Skript
 
 ```bash
-nano /opt/bas-pruefungsgenerator/maintenance.sh
+nano /opt/bas-wissen/maintenance.sh
 ```
 
 **Inhalt:**
@@ -833,7 +866,7 @@ set -e
 echo "=== Wartung gestartet: $(date) ==="
 
 # 1. Backup erstellen
-/opt/bas-pruefungsgenerator/backup.sh
+/opt/bas-wissen/backup.sh
 
 # 2. Docker Images aufräumen
 echo "Räume alte Docker Images auf..."
@@ -845,18 +878,18 @@ docker volume ls -qf dangling=true | xargs -r docker volume rm
 
 # 4. PostgreSQL VACUUM
 echo "Führe PostgreSQL VACUUM durch..."
-docker compose -f /opt/bas-pruefungsgenerator/docker-compose.yml exec db \
-  psql -U bas_user -d bas_pruefungsgenerator -c "VACUUM ANALYZE;"
+docker compose -f /opt/bas-wissen/docker-compose.yml exec db \
+  psql -U bas_user -d bas_wissen -c "VACUUM ANALYZE;"
 
 echo "=== Wartung abgeschlossen: $(date) ==="
 ```
 
 ```bash
-chmod +x /opt/bas-pruefungsgenerator/maintenance.sh
+chmod +x /opt/bas-wissen/maintenance.sh
 
 # Wöchentliche Ausführung (Sonntag 4 Uhr)
 crontab -e
-# 0 4 * * 0 /opt/bas-pruefungsgenerator/maintenance.sh >> /var/log/bas-maintenance.log 2>&1
+# 0 4 * * 0 /opt/bas-wissen/maintenance.sh >> /var/log/bas-maintenance.log 2>&1
 ```
 
 - [x] Tested
@@ -875,11 +908,11 @@ crontab -e
 docker compose -f docker-compose.yml down
 
 # 3. Aktuelles Image für Rollback sichern
-docker tag ghcr.io/campus-12/bas-pruefungsgenerator-container:latest \
-           ghcr.io/campus-12/bas-pruefungsgenerator-container:backup-$(date +%Y%m%d%M%S)
+docker tag ghcr.io/campus-12/bas-wissen-container:latest \
+           ghcr.io/campus-12/bas-wissen-container:backup-$(date +%Y%m%d%H%M%S)
 
 # 4. Neues Image pullen
-docker pull ghcr.io/campus-12/bas-pruefungsgenerator-container:latest
+docker pull ghcr.io/campus-12/bas-wissen-container:latest
 
 # 5. Container neu starten
 docker compose -f docker-compose.yml --env-file .env up -d
@@ -899,18 +932,18 @@ docker compose -f docker-compose.yml logs -f
 # Falls Update fehlschlägt: Rollback auf vorherige Version
 
 # 1. Verfügbare Images anzeigen
-docker images | grep bas-pruefungsgenerator-container
+docker images | grep bas-wissen-container
 
 # Erwartete Ausgabe:
-# ghcr.io/.../container   latest              abc123456789   1 hour ago    512MB
-# ghcr.io/.../container   backup-20251023     2b62809e356e   7 days ago    508MB
+# ghcr.io/campus-12/bas-wissen-container   latest              abc123456789   1 hour ago    512MB
+# ghcr.io/campus-12/bas-wissen-container   backup-20251216...  2b62809e356e   7 days ago    508MB
 
 # 2. Container stoppen
 docker compose -f docker-compose.yml down
 
 # 3. Alte Version in docker-compose.yml aktivieren
 # Option A: Backup-Tag verwenden (wenn vorhanden)
-#   image: ghcr.io/campus-12/bas-pruefungsgenerator-container:backup-20251023
+#   image: ghcr.io/campus-12/bas-wissen-container:backup-20251216123045
 #
 # Option B: Image-ID verwenden (immer verfügbar)
 #   image: 2b62809e356e
@@ -920,8 +953,6 @@ nano docker-compose.yml
 
 # 5. Container mit alter Version starten
 docker compose -f docker-compose.yml --env-file .env up -d
-
-
 ```
 
 - [ ] Tested
@@ -960,7 +991,7 @@ wget -O- http://db:5432  # Sollte PostgreSQL-Response zeigen
 
 # Direkt zur Datenbank verbinden
 docker compose -f docker-compose.yml exec db \
-  psql -U bas_user -d bas_pruefungsgenerator
+  psql -U bas_user -d bas_wissen
 ```
 
 ### LDAP-Authentifizierung funktioniert nicht
@@ -982,10 +1013,10 @@ docker compose -f docker-compose.yml logs app | grep -i ldap
 
 ```bash
 # Zertifikat-Dateien prüfen
-ls -la /opt/bas-pruefungsgenerator/data/ssl/
+ls -la /opt/bas-wissen/data/ssl/
 
 # Zertifikat-Gültigkeit prüfen
-openssl x509 -in /opt/bas-pruefungsgenerator/data/ssl/cert.pem -noout -dates -subject
+openssl x509 -in /opt/bas-wissen/data/ssl/cert.pem -noout -dates -subject
 
 # Caddyfile-Syntax prüfen
 docker compose -f docker-compose.yml exec app caddy validate --config /etc/caddy/Caddyfile
@@ -998,11 +1029,11 @@ docker compose -f docker-compose.yml logs app | grep -i caddy
 
 ```bash
 # Ressourcenverbrauch überwachen
-docker stats bas-app bas-db
+docker stats bas-wissen-app bas-wissen-db
 
 # PostgreSQL Query-Performance analysieren
 docker compose -f docker-compose.yml exec db \
-  psql -U bas_user -d bas_pruefungsgenerator -c "
+  psql -U bas_user -d bas_wissen -c "
     SELECT pid, usename, application_name, state, query, query_start
     FROM pg_stat_activity
     WHERE state != 'idle'
@@ -1011,7 +1042,7 @@ docker compose -f docker-compose.yml exec db \
 
 # Langsame Queries identifizieren (pg_stat_statements Extension erforderlich)
 docker compose -f docker-compose.yml exec db \
-  psql -U bas_user -d bas_pruefungsgenerator -c "
+  psql -U bas_user -d bas_wissen -c "
     SELECT query, calls, total_exec_time, mean_exec_time
     FROM pg_stat_statements
     ORDER BY mean_exec_time DESC
@@ -1023,13 +1054,13 @@ docker compose -f docker-compose.yml exec db \
 
 ```bash
 # Speicherverbrauch analysieren
-du -sh /opt/bas-pruefungsgenerator/data/*
+du -sh /opt/bas-wissen/data/*
 
 # Alte Logs löschen
-find /opt/bas-pruefungsgenerator/data/logs -name "*.log" -mtime +30 -delete
+find /opt/bas-wissen/data/logs -name "*.log" -mtime +30 -delete
 
 # Alte Backups löschen
-find /opt/bas-pruefungsgenerator/data/backups -mtime +30 -delete
+find /opt/bas-wissen/data/backups -mtime +30 -delete
 
 # Docker aufräumen
 docker system prune -af
@@ -1056,7 +1087,7 @@ docker compose -f docker-compose.yml exec -u root app sh
 ### Für den Kunden: DNS A-Record einrichten
 
 ```
-Hostname: pruefungsgenerator.ihre-domain.de
+Hostname: bas-wissen.ihre-domain.de
 Type: A
 Value: <IP-Adresse des VServers>
 TTL: 3600
@@ -1066,7 +1097,7 @@ TTL: 3600
 
 ```bash
 # Lokal testen
-nslookup pruefungsgenerator.ihre-domain.de
+nslookup bas-wissen.ihre-domain.de
 
 # Weltweit testen
 # https://www.whatsmydns.net
@@ -1083,20 +1114,21 @@ Nach der Installation folgende Punkte prüfen:
 - [ ] **Firewall (ufw)** ist aktiv mit nur Port 22, 80, 443 offen
 - [ ] **SSH** nutzt Key-basierte Authentifizierung (Passwort deaktiviert)
 - [ ] **PostgreSQL** ist nur über localhost erreichbar (127.0.0.1:5432)
-- [ ] **Starke Passwörter** (min. 32 Zeichen) für PostgreSQL und ggf. Swagger
+- [ ] **Starke Passwörter** (min. 32 Zeichen) für PostgreSQL
 - [ ] **JWT Secret** hat mindestens 64 Zeichen
 - [ ] **SSL-Zertifikate** sind mit chmod 600 geschützt
 - [ ] **.env-Datei** ist mit chmod 600 geschützt
-- [ ] **Swagger Basic Auth** ist in Production aktiviert
+- [ ] **APP_ENV** ist auf "production" gesetzt (Swagger nur in "develop" aktiv)
 - [ ] **SSL/TLS** läuft mit gültigem Zertifikat
 - [ ] **Automatische Backups** sind konfiguriert und getestet
 - [ ] **Log-Rotation** ist aktiv
 - [ ] **Docker-Container** haben restart-Policy "unless-stopped"
 - [ ] **Security Headers** sind in Caddyfile konfiguriert
 - [ ] **Monitoring** ist eingerichtet (Healthchecks, Logs)
-- [ ] **Systemd Service** ist eingerichtet; Prüfungsgenerator startet nach reboot automatisch
+- [ ] **Externes Video-Volume** ist gemountet und Symlink ist korrekt
+- [ ] **LDAP-Gruppen** sind im Active Directory/LDAP angelegt (SG_BAS-Wissen-Admin, SG_BAS-Wissen-Creator, SG_BAS-Wissen-User)
 
 ---
 
-**Letzte Aktualisierung**: November 2025
-**Version**: 1.1
+**Letzte Aktualisierung**: Dezember 2025
+**Version**: 2.0 (BAS Wissen)
