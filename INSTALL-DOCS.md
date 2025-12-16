@@ -358,7 +358,7 @@ services:
       - LDAP_BIND_DN=${LDAP_BIND_DN}
       - LDAP_BIND_CREDENTIALS=${LDAP_BIND_CREDENTIALS}
       - LDAP_SEARCH_BASE=${LDAP_SEARCH_BASE}
-      - LDAP_SEARCH_FILTER=${LDAP_SEARCH_FILTER:-(|(sAMAccountName={{username}})(uid={{username}}))}
+      - 'LDAP_SEARCH_FILTER=(sAMAccountName={{username}})'
       - LDAP_TIMEOUT_MS=${LDAP_TIMEOUT_MS:-10000}
       - LDAP_CONNECT_TIMEOUT_MS=${LDAP_CONNECT_TIMEOUT_MS:-10000}
 
@@ -616,7 +616,7 @@ curl -k https://ihre-domain.de/api/
 2. Mit LDAP-Credentials einloggen
 3. Prüfen, ob Benutzerrolle korrekt zugewiesen wurde
 
-- [ ] Tested
+- [x] Tested
 
 ## Backup-Strategie
 
@@ -681,7 +681,7 @@ echo "BAS Backup abgeschlossen: $(date)"
 echo "=========================================="
 ```
 
-- [ ] Tested
+- [x] Tested
 
 
 **Script ausführbar machen:**
@@ -690,7 +690,7 @@ echo "=========================================="
 chmod +x /opt/bas-wissen/backup.sh
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 2. Cron-Job für automatische Backups
 
@@ -705,7 +705,7 @@ crontab -e
 0 3 * * * /opt/bas-wissen/backup.sh >> /var/log/bas-backup.log 2>&1
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 3. Backup wiederherstellen
 
@@ -724,15 +724,11 @@ docker compose -f docker-compose.yml exec -T db \
 docker compose -f docker-compose.yml start app
 ```
 
-- [ ] Tested
+- [x] Tested
 
 **Video-Daten wiederherstellen:**
 
 ⚠️ **Hinweis:** Video-Daten werden nicht durch das Backup-Script gesichert, da sie auf einem externen Volume liegen. Für die Wiederherstellung von Video-Daten eigene Backup-Restore-Lösung verwenden.
-
-```
-
-- [ ] Tested
 
 ---
 
@@ -773,7 +769,7 @@ sudo nano /etc/logrotate.d/bas-wissen
 ```
 
 
-- [ ] Tested
+- [x] Tested
 
 ### 2. Healthcheck-Script
 
@@ -807,13 +803,14 @@ chmod +x /opt/bas-wissen/healthcheck.sh
 
 /opt/bas-wissen/healthcheck.sh
 ```
+
 Output:
 ```
 OK: Application is healthy
 ```
 
 
-- [ ] Tested
+- [x] Tested
 
 ### 3. Wichtige Monitoring-Befehle
 
@@ -889,7 +886,7 @@ crontab -e
 # 0 4 * * 0 /opt/bas-wissen/maintenance.sh >> /var/log/bas-maintenance.log 2>&1
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ---
 
