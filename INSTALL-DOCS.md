@@ -63,7 +63,7 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl wget git nano ufw logrotate
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 2. Docker Installation
 
@@ -81,7 +81,7 @@ sudo usermod -aG docker $USER
 # Abmelden und neu anmelden, damit Gruppenzugehörigkeit wirksam wird
 ```
 
-- [ ] Tested
+- [x] Tested
 
 **Docker Installation verifizieren:**
 
@@ -91,7 +91,7 @@ docker --version
 docker compose version
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 3. Firewall konfigurieren
 
@@ -108,7 +108,7 @@ sudo ufw enable
 sudo ufw status verbose
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 4. Verzeichnisstruktur erstellen
 
@@ -125,7 +125,7 @@ sudo chown -R $USER:$USER /opt/bas-wissen
 chmod 755 data
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 5. Externes Volume für Video-Storage einbinden
 
@@ -196,7 +196,7 @@ cd /opt/bas-wissen/data/ssl
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 -keyout key.pem \
 -out cert.pem \
--subj "/C=DE/ST=SN/L=Leipzig/O=Meetle GmbH/OU=Nachhall Ops/CN=bas-pg-test.meetle.dev" \
+-subj "/C=DE/ST=SN/L=Leipzig/O=Meetle GmbH/OU=Nachhall Ops/CN=bas-wissen.meetle.dev" \
 -addext "subjectAltName=DNS:bas-pg-test.meetle.dev"
 ```
 
@@ -225,7 +225,7 @@ openssl x509 -in /opt/bas-wissen/data/ssl/cert.pem -noout -subject -issuer
 openssl x509 -in /opt/bas-wissen/data/ssl/cert.pem -text -noout
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 2. Caddyfile für Production erstellen
 
@@ -289,7 +289,7 @@ nano /opt/bas-wissen/Caddyfile
 }
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ---
 
@@ -428,7 +428,7 @@ networks:
     driver: bridge
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 2. Environment-Variablen konfigurieren
 
@@ -490,9 +490,6 @@ LDAP_BIND_CREDENTIALS=<LDAP_SERVICE_PASSWORD>
 # Benutzersuche
 LDAP_SEARCH_BASE=ou=users,dc=miracode,dc=io
 
-# Search Filter (Default sucht nach sAMAccountName oder uid)
-LDAP_SEARCH_FILTER=(|(sAMAccountName={{username}})(uid={{username}}))
-
 # LDAP Timeouts (optional, Defaults: 10000ms)
 # LDAP_TIMEOUT_MS=10000
 # LDAP_CONNECT_TIMEOUT_MS=10000
@@ -508,8 +505,8 @@ LDAP_SEARCH_FILTER=(|(sAMAccountName={{username}})(uid={{username}}))
 # ========================================
 # Optional: CORS & Cookie Configuration
 # ========================================
-# Nur benötigt, wenn Frontend auf anderer Domain läuft
-# FRONTEND_ORIGINS=https://andere-domain.de
+FRONTEND_ORIGINS=https://andere-domain.de
+# nur bei abweichenden domains
 # COOKIE_DOMAIN=.bas.de
 
 # ========================================
@@ -518,7 +515,7 @@ LDAP_SEARCH_FILTER=(|(sAMAccountName={{username}})(uid={{username}}))
 # DEBUG_LDAP=1  # Aktiviert zusätzliche LDAP-Logs
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 3. Secrets generieren
 
@@ -532,7 +529,7 @@ echo "POSTGRES_PASSWORD=$(openssl rand -hex 32)"
 echo "JWT_SECRET=$(openssl rand -base64 64)"
 ```
 
-- [ ] Tested
+- [x] Tested
 
 **Wichtig:** Kopieren Sie die generierten Werte in die `.env` Datei.
 
@@ -543,7 +540,7 @@ echo "JWT_SECRET=$(openssl rand -base64 64)"
 chmod 600 /opt/bas-wissen/.env
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ---
 
@@ -553,13 +550,13 @@ chmod 600 /opt/bas-wissen/.env
 
 ```bash
 # GitHub Token für campus-12 image repo
-export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+ export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
 
 # Login durchführen (username für ghcr egal für docker cli aber benötigt)
 echo $GITHUB_TOKEN | docker login ghcr.io -u - --password-stdin
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 2. Docker Image pullen
 
@@ -570,7 +567,7 @@ cd /opt/bas-wissen
 docker pull ghcr.io/campus-12/bas-wissen-container:latest
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 3. Container starten
 
@@ -600,7 +597,7 @@ docker compose -f docker-compose.yml ps
 # 2. Backend-API testen
 curl -k https://ihre-domain.de/api/
 
-# Erwartete Ausgabe: "Hello from BAS Wissen API!"
+# Erwartete Ausgabe: "Hello World!"
 
 # 3. Frontend testen (im Browser)
 # https://ihre-domain.de
@@ -609,7 +606,7 @@ curl -k https://ihre-domain.de/api/
 # https://ihre-domain.de/api/docs
 ```
 
-- [ ] Tested
+- [x] Tested
 
 ### 5. Erste Schritte nach Installation
 
