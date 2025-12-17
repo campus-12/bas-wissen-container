@@ -244,16 +244,12 @@ nano /opt/bas-wissen/Caddyfile
 :443 {
     tls /ssl/cert.pem /ssl/key.pem
 
-    # Backend API (inkl. Video-Streaming)
+    # Backend API (inkl. Video-Streaming & Upload-Transcoding)
     handle /api/* {
+        uri strip_prefix /api
         reverse_proxy localhost:3000 {
             # Buffering deaktivieren für Video-Streaming
             flush_interval -1
-            # Timeouts für große Video-Uploads und -Streams
-            transport http {
-                read_timeout 300s
-                write_timeout 300s
-            }
         }
     }
 

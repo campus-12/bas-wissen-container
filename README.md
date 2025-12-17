@@ -57,27 +57,27 @@ services:
 			- NODE_ENV=production
 			- APP_ENV=${APP_ENV:-production}
 			- PORT=3000
-			
+
 			# Database
 			- DATABASE_TYPE=postgres
 			- DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
-			
+
 			# JWT Configuration
 			- JWT_SECRET=${JWT_SECRET}
 			- JWT_ACCESS_TOKEN_EXPIRES_IN=45m
 			- JWT_REFRESH_TOKEN_EXPIRES_IN=5d
-			
+
 			# Video Processing
 			- VIDEO_STORAGE_PATH=/data/videos
 			- VIDEO_ALLOWED_MIME_TYPES=video/mp4,video/webm,video/ogg,video/quicktime
-			
+
 			# LDAP Configuration
 			- LDAP_SERVER_URL=${LDAP_SERVER_URL}
 			- LDAP_BIND_DN=${LDAP_BIND_DN}
 			- LDAP_BIND_CREDENTIALS=${LDAP_BIND_CREDENTIALS}
 			- LDAP_SEARCH_BASE=${LDAP_SEARCH_BASE}
 			- LDAP_SEARCH_FILTER=(|(sAMAccountName={{username}})(uid={{username}}))
-			
+
 			# Optional
 			- ALLOW_NO_ORIGIN=true
 
@@ -151,17 +151,6 @@ Die Anwendung ist nach dem Build unter `http://localhost` (oder `https://ihre-do
   - `SG_BAS-Wissen-Admin` (Volle Rechte)
   - `SG_BAS-Wissen-Creator` (Kann Videos hochladen)
   - `SG_BAS-Wissen-User` (Kann Videos anschauen)
-
-## Datenverzeichnis-Struktur
-
-```text
-/data
-  /videos        # Video-Dateien (Desktop/Mobile Varianten)
-  /postgres      # PostgreSQL Datenbank
-  /ssl           # SSL-Zertifikate (cert.pem, key.pem)
-  /logs/caddy    # Caddy Access Logs
-  /backups       # Datenbank-Backups
-```
 
 ## Persistente Daten
 
